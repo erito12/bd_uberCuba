@@ -1,0 +1,78 @@
+
+CREATE SCHEMA uberCuba;
+
+CREATE TABLE uberCuba.usuarios (
+    id_usuario SERIAL PRIMARY KEY,
+    usuario VARCHAR(50) NOT NULL,
+    foto_perfil VARCHAR(255),
+    contrasenna VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    numero_telefono VARCHAR(15),
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rol VARCHAR(10) CHECK (rol IN ('admin', 'chofer', 'cliente', 'turista')),
+    CONSTRAINT email_format CHECK (email LIKE '%_@__%.__%')
+);
+CREATE TABLE uberCuba.choferes (
+    id_chofer SERIAL PRIMARY KEY,
+    id_usuario INT UNIQUE REFERENCES uberCuba.usuarios(id_usuario),
+    licencia_conduccion VARCHAR(50) NOT NULL,
+    licencia_operativa VARCHAR(50) NOT NULL,
+    annos_experiencia INT CHECK (annos_experiencia >= 0),
+    direccion VARCHAR(255),
+    puntacion INT DEFAULT 100 CHECK (puntacion BETWEEN 1 AND 100),
+    estado VARCHAR(15) CHECK (estado IN ('en linea', 'desconectado', 'ocupado', 'libre')),
+    FOREIGN KEY (id_usuario) REFERENCES uberCuba.usuarios(id_usuario) ON DELETE CASCADE
+);
+
+CREATE TABLE uberCuba.choferes (
+    id_chofer SERIAL PRIMARY KEY,
+    id_usuario INT UNIQUE REFERENCES uberCuba.usuarios(id_usuario),
+    licencia_conduccion VARCHAR(50) NOT NULL,
+    licencia_operativa VARCHAR(50) NOT NULL,
+    annos_experiencia INT CHECK (annos_experiencia >= 0),
+    direccion VARCHAR(255),
+    puntacion INT DEFAULT 100 CHECK (puntacion BETWEEN 1 AND 100),
+    estado VARCHAR(15) CHECK (estado IN ('en linea', 'desconectado', 'ocupado', 'libre')),
+    FOREIGN KEY (id_usuario) REFERENCES uberCuba.usuarios(id_usuario) ON DELETE CASCADE
+);
+
+CREATE TABLE uberCuba.vehiculos (
+    id_vehiculo SERIAL PRIMARY KEY,
+    id_chofer INT UNIQUE REFERENCES uberCuba.choferes(id_chofer),
+    matricula VARCHAR(20) NOT NULL,
+    modelo VARCHAR(50) NOT NULL,
+    capacidad INT NOT NULL,
+    circulacion DATE NOT NULL,
+    foto_vehiculo VARCHAR(255),
+    climatizado BOOLEAN DEFAULT FALSE,
+    musica BOOLEAN DEFAULT FALSE,
+    luces BOOLEAN DEFAULT FALSE,
+    comodidad INT CHECK (comodidad BETWEEN 1 AND 5),
+    evaluacion INT CHECK (evaluacion BETWEEN 1 AND 100),
+    FOREIGN KEY (id_chofer) REFERENCES uberCuba.choferes(id_chofer) ON DELETE CASCADE
+);
+
+CREATE TABLE uberCuba.solicitudes (
+    id_solicitud SERIAL PRIMARY KEY,
+    fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lugar_origen VARCHAR(255) NOT NULL,
+    lugar_destino VARCHAR(255) NOT NULL,
+    tipo_solicitud VARCHAR(10) CHECK (tipo_solicitud IN ('al momento', 'reservar')),
+    clase_vehiculo VARCHAR(50) NOT NULL,
+    capacidad_requerida INT NOT NULL,
+    precio DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE uberCuba.historial_solicitudes (
+    id_historial SERIAL PRIMARY KEY,
+    id_usuario INT REFERENCES uberCuba.usuarios(id_usuario),
+    id_solicitud INT REFERENCES uberCuba.solicitudes(id_solicitud),
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_usuario) REFERENCES uberCuba.usuarios(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_solicitud) REFERENCES uberCuba.solicitudes(id_solicitud) ON DELETE CASCADE
+);
+
+
+
+
+
