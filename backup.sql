@@ -26,6 +26,34 @@ CREATE SCHEMA ubercuba;
 ALTER SCHEMA ubercuba OWNER TO erito;
 
 --
+-- Name: request_state_request_enum; Type: TYPE; Schema: ubercuba; Owner: erito
+--
+
+CREATE TYPE ubercuba.request_state_request_enum AS ENUM (
+    'processing',
+    'accepted',
+    'confirmed',
+    'rejected'
+);
+
+
+ALTER TYPE ubercuba.request_state_request_enum OWNER TO erito;
+
+--
+-- Name: solicitudes_state_request_enum; Type: TYPE; Schema: ubercuba; Owner: erito
+--
+
+CREATE TYPE ubercuba.solicitudes_state_request_enum AS ENUM (
+    'processing',
+    'accepted',
+    'confirmed',
+    'rejected'
+);
+
+
+ALTER TYPE ubercuba.solicitudes_state_request_enum OWNER TO erito;
+
+--
 -- Name: usuarios_rol_enum; Type: TYPE; Schema: ubercuba; Owner: erito
 --
 
@@ -38,6 +66,20 @@ CREATE TYPE ubercuba.usuarios_rol_enum AS ENUM (
 
 
 ALTER TYPE ubercuba.usuarios_rol_enum OWNER TO erito;
+
+--
+-- Name: vehicle_class_vehicle_enum; Type: TYPE; Schema: ubercuba; Owner: erito
+--
+
+CREATE TYPE ubercuba.vehicle_class_vehicle_enum AS ENUM (
+    'A',
+    'B',
+    'C',
+    'Moto'
+);
+
+
+ALTER TYPE ubercuba.vehicle_class_vehicle_enum OWNER TO erito;
 
 SET default_tablespace = '';
 
@@ -120,19 +162,64 @@ ALTER SEQUENCE ubercuba.historial_solicitudes_id_historial_seq OWNED BY ubercuba
 
 
 --
+-- Name: request; Type: TABLE; Schema: ubercuba; Owner: erito
+--
+
+CREATE TABLE ubercuba.request (
+    id_solicitud integer NOT NULL,
+    fecha_hora character varying NOT NULL,
+    lugar_origen character varying(255) NOT NULL,
+    lugar_destino character varying(255) NOT NULL,
+    tipo_solicitud character varying(10) NOT NULL,
+    clase_vehiculo character varying(50) NOT NULL,
+    capacidad_requerida integer NOT NULL,
+    precio integer NOT NULL,
+    id_vehicle integer,
+    id_usuario integer,
+    state_request ubercuba.request_state_request_enum DEFAULT 'processing'::ubercuba.request_state_request_enum NOT NULL
+);
+
+
+ALTER TABLE ubercuba.request OWNER TO erito;
+
+--
+-- Name: request_id_solicitud_seq; Type: SEQUENCE; Schema: ubercuba; Owner: erito
+--
+
+CREATE SEQUENCE ubercuba.request_id_solicitud_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE ubercuba.request_id_solicitud_seq OWNER TO erito;
+
+--
+-- Name: request_id_solicitud_seq; Type: SEQUENCE OWNED BY; Schema: ubercuba; Owner: erito
+--
+
+ALTER SEQUENCE ubercuba.request_id_solicitud_seq OWNED BY ubercuba.request.id_solicitud;
+
+
+--
 -- Name: solicitudes; Type: TABLE; Schema: ubercuba; Owner: erito
 --
 
 CREATE TABLE ubercuba.solicitudes (
     id_solicitud integer NOT NULL,
-    fecha_hora timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     lugar_origen character varying(255) NOT NULL,
     lugar_destino character varying(255) NOT NULL,
-    tipo_solicitud character varying(10),
+    tipo_solicitud character varying(10) NOT NULL,
     clase_vehiculo character varying(50) NOT NULL,
     capacidad_requerida integer NOT NULL,
-    precio numeric(10,2) NOT NULL,
-    CONSTRAINT solicitudes_tipo_solicitud_check CHECK (((tipo_solicitud)::text = ANY ((ARRAY['al momento'::character varying, 'reservar'::character varying])::text[])))
+    id_usuario integer,
+    fecha_hora character varying NOT NULL,
+    id_vehicle integer,
+    precio integer NOT NULL,
+    state_request ubercuba.solicitudes_state_request_enum DEFAULT 'processing'::ubercuba.solicitudes_state_request_enum NOT NULL
 );
 
 
@@ -166,9 +253,9 @@ ALTER SEQUENCE ubercuba.solicitudes_id_solicitud_seq OWNED BY ubercuba.solicitud
 
 CREATE TABLE ubercuba.usuarios (
     id_usuario integer NOT NULL,
-    usuario character varying(50) NOT NULL,
+    "userName" character varying(50) NOT NULL,
     foto_perfil character varying(255),
-    email character varying(100),
+    email character varying(100) NOT NULL,
     numero_telefono character varying(15),
     fecha_creacion timestamp without time zone DEFAULT now() NOT NULL,
     contrasena character varying(255) NOT NULL,
@@ -213,7 +300,8 @@ CREATE TABLE ubercuba.vehicle (
     climatizado boolean,
     musica boolean,
     comodidad_asientos boolean,
-    id_chofer integer
+    id_chofer integer,
+    class_vehicle ubercuba.vehicle_class_vehicle_enum NOT NULL
 );
 
 
@@ -255,6 +343,13 @@ ALTER TABLE ONLY ubercuba.historial_solicitudes ALTER COLUMN id_historial SET DE
 
 
 --
+-- Name: request id_solicitud; Type: DEFAULT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.request ALTER COLUMN id_solicitud SET DEFAULT nextval('ubercuba.request_id_solicitud_seq'::regclass);
+
+
+--
 -- Name: solicitudes id_solicitud; Type: DEFAULT; Schema: ubercuba; Owner: erito
 --
 
@@ -293,10 +388,19 @@ COPY ubercuba.historial_solicitudes (id_historial, id_usuario, id_solicitud, fec
 
 
 --
+-- Data for Name: request; Type: TABLE DATA; Schema: ubercuba; Owner: erito
+--
+
+COPY ubercuba.request (id_solicitud, fecha_hora, lugar_origen, lugar_destino, tipo_solicitud, clase_vehiculo, capacidad_requerida, precio, id_vehicle, id_usuario, state_request) FROM stdin;
+\.
+
+
+--
 -- Data for Name: solicitudes; Type: TABLE DATA; Schema: ubercuba; Owner: erito
 --
 
-COPY ubercuba.solicitudes (id_solicitud, fecha_hora, lugar_origen, lugar_destino, tipo_solicitud, clase_vehiculo, capacidad_requerida, precio) FROM stdin;
+COPY ubercuba.solicitudes (id_solicitud, lugar_origen, lugar_destino, tipo_solicitud, clase_vehiculo, capacidad_requerida, id_usuario, fecha_hora, id_vehicle, precio, state_request) FROM stdin;
+1	cuba	hababna	al momneto	A	2	2	10 enero 2001	\N	45	processing
 \.
 
 
@@ -304,8 +408,10 @@ COPY ubercuba.solicitudes (id_solicitud, fecha_hora, lugar_origen, lugar_destino
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: ubercuba; Owner: erito
 --
 
-COPY ubercuba.usuarios (id_usuario, usuario, foto_perfil, email, numero_telefono, fecha_creacion, contrasena, rol) FROM stdin;
-2	everdecia	\N	cccc@gmail.cooomm	56217803	2025-01-31 23:25:40.452839	$2b$10$YGvZImyoFtSbryVfD.4LieSpckcZogUqI9iFf6gepYwh5bl7eGKTu	chofer
+COPY ubercuba.usuarios (id_usuario, "userName", foto_perfil, email, numero_telefono, fecha_creacion, contrasena, rol) FROM stdin;
+2	everdecia	\N	ero62792@gmail.com	51819687	2025-01-31 23:25:40.452839	$2b$10$YGvZImyoFtSbryVfD.4LieSpckcZogUqI9iFf6gepYwh5bl7eGKTu	chofer
+5	dasda	\N	qweqe@gafa.com	51819687	2025-02-11 22:10:34.552836	$2b$10$u/ZOiWgtwQU0AHRjpvTiROR2jmVQNO3DZHuYEz96jxri9OqJqfTWe	chofer
+6	erito	\N	qweqe@gafwqeq.com	51819687	2025-02-11 22:11:24.15317	$2b$10$0ZujcX0ZTyq2.r/.5MXVRuL.Xo1OGnAPmKn021qJzt.VN53WkuUoG	admin
 \.
 
 
@@ -313,8 +419,8 @@ COPY ubercuba.usuarios (id_usuario, usuario, foto_perfil, email, numero_telefono
 -- Data for Name: vehicle; Type: TABLE DATA; Schema: ubercuba; Owner: erito
 --
 
-COPY ubercuba.vehicle (id_vehiculo, matricula, modelo, capacidad, foto_vehiculo, climatizado, musica, comodidad_asientos, id_chofer) FROM stdin;
-4	S143654	Lamborjiny	4	string	t	t	t	1
+COPY ubercuba.vehicle (id_vehiculo, matricula, modelo, capacidad, foto_vehiculo, climatizado, musica, comodidad_asientos, id_chofer, class_vehicle) FROM stdin;
+7	S143654	Lamborjiny	4	string	t	t	t	1	C
 \.
 
 
@@ -333,32 +439,55 @@ SELECT pg_catalog.setval('ubercuba.historial_solicitudes_id_historial_seq', 1, f
 
 
 --
+-- Name: request_id_solicitud_seq; Type: SEQUENCE SET; Schema: ubercuba; Owner: erito
+--
+
+SELECT pg_catalog.setval('ubercuba.request_id_solicitud_seq', 1, false);
+
+
+--
 -- Name: solicitudes_id_solicitud_seq; Type: SEQUENCE SET; Schema: ubercuba; Owner: erito
 --
 
-SELECT pg_catalog.setval('ubercuba.solicitudes_id_solicitud_seq', 1, false);
+SELECT pg_catalog.setval('ubercuba.solicitudes_id_solicitud_seq', 1, true);
 
 
 --
 -- Name: usuarios_id_usuario_seq; Type: SEQUENCE SET; Schema: ubercuba; Owner: erito
 --
 
-SELECT pg_catalog.setval('ubercuba.usuarios_id_usuario_seq', 2, true);
+SELECT pg_catalog.setval('ubercuba.usuarios_id_usuario_seq', 6, true);
 
 
 --
 -- Name: vehicle_id_vehiculo_seq; Type: SEQUENCE SET; Schema: ubercuba; Owner: erito
 --
 
-SELECT pg_catalog.setval('ubercuba.vehicle_id_vehiculo_seq', 4, true);
+SELECT pg_catalog.setval('ubercuba.vehicle_id_vehiculo_seq', 7, true);
 
 
 --
--- Name: vehicle PK_285216f356842cf93fd9ee7e15b; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+-- Name: request PK_ae93f7b09008ecc3088794a71d4; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
 --
 
-ALTER TABLE ONLY ubercuba.vehicle
-    ADD CONSTRAINT "PK_285216f356842cf93fd9ee7e15b" PRIMARY KEY (id_vehiculo);
+ALTER TABLE ONLY ubercuba.request
+    ADD CONSTRAINT "PK_ae93f7b09008ecc3088794a71d4" PRIMARY KEY (id_solicitud);
+
+
+--
+-- Name: request REL_122f708d66377f908c68e2a5e8; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.request
+    ADD CONSTRAINT "REL_122f708d66377f908c68e2a5e8" UNIQUE (id_usuario);
+
+
+--
+-- Name: request REL_878a6b2db9b618f9df01d481fe; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.request
+    ADD CONSTRAINT "REL_878a6b2db9b618f9df01d481fe" UNIQUE (id_vehicle);
 
 
 --
@@ -367,6 +496,22 @@ ALTER TABLE ONLY ubercuba.vehicle
 
 ALTER TABLE ONLY ubercuba.vehicle
     ADD CONSTRAINT "UQ_2288c15783127e39a71c4f7034d" UNIQUE (id_chofer);
+
+
+--
+-- Name: solicitudes UQ_28e1a9487269711061730ab0e42; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.solicitudes
+    ADD CONSTRAINT "UQ_28e1a9487269711061730ab0e42" UNIQUE (id_vehicle);
+
+
+--
+-- Name: solicitudes UQ_5a90aba7ac86cdfd880513db979; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.solicitudes
+    ADD CONSTRAINT "UQ_5a90aba7ac86cdfd880513db979" UNIQUE (id_usuario);
 
 
 --
@@ -410,11 +555,51 @@ ALTER TABLE ONLY ubercuba.usuarios
 
 
 --
+-- Name: vehicle vehicle_pkey; Type: CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.vehicle
+    ADD CONSTRAINT vehicle_pkey PRIMARY KEY (id_vehiculo);
+
+
+--
+-- Name: request FK_122f708d66377f908c68e2a5e8c; Type: FK CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.request
+    ADD CONSTRAINT "FK_122f708d66377f908c68e2a5e8c" FOREIGN KEY (id_usuario) REFERENCES ubercuba.usuarios(id_usuario);
+
+
+--
 -- Name: vehicle FK_2288c15783127e39a71c4f7034d; Type: FK CONSTRAINT; Schema: ubercuba; Owner: erito
 --
 
 ALTER TABLE ONLY ubercuba.vehicle
     ADD CONSTRAINT "FK_2288c15783127e39a71c4f7034d" FOREIGN KEY (id_chofer) REFERENCES ubercuba.choferes(id_chofer);
+
+
+--
+-- Name: solicitudes FK_28e1a9487269711061730ab0e42; Type: FK CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.solicitudes
+    ADD CONSTRAINT "FK_28e1a9487269711061730ab0e42" FOREIGN KEY (id_vehicle) REFERENCES ubercuba.vehicle(id_vehiculo);
+
+
+--
+-- Name: solicitudes FK_5a90aba7ac86cdfd880513db979; Type: FK CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.solicitudes
+    ADD CONSTRAINT "FK_5a90aba7ac86cdfd880513db979" FOREIGN KEY (id_usuario) REFERENCES ubercuba.usuarios(id_usuario);
+
+
+--
+-- Name: request FK_878a6b2db9b618f9df01d481fef; Type: FK CONSTRAINT; Schema: ubercuba; Owner: erito
+--
+
+ALTER TABLE ONLY ubercuba.request
+    ADD CONSTRAINT "FK_878a6b2db9b618f9df01d481fef" FOREIGN KEY (id_vehicle) REFERENCES ubercuba.vehicle(id_vehiculo);
 
 
 --
